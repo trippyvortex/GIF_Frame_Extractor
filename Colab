@@ -1,0 +1,55 @@
+# Mount Google Drive to save extracted frames
+from google.colab import drive
+drive.mount('/content/drive')
+
+# Install necessary libraries
+!pip install imageio
+!pip install ipywidgets
+
+# Import required libraries
+import imageio
+import os
+from ipywidgets import widgets
+from IPython.display import display
+
+# Function to extract frames from a GIF and save them
+def extract_frames(gif_path, output_folder):
+    gif = imageio.get_reader(gif_path)
+
+    # Create the output folder if it doesn't exist
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+
+    frame_paths = []
+    for i, frame in enumerate(gif):
+        frame_path = os.path.join(output_folder, f"frame_{i:04d}.png")
+        imageio.imsave(frame_path, frame)
+        frame_paths.append(frame_path)
+
+    return frame_paths
+
+# Create a file upload widget
+uploader = widgets.FileUpload(accept='.gif', multiple=False)
+display(uploader)
+
+def on_upload_change(change):
+    if uploader.value:
+        uploaded_file = list(uploader.value.values())[0]
+        with open('/content/input.gif', 'wb') as f:
+            f.write(uploaded_file['content'])
+        frames = extract_frames('/content/input.gif', '/content/frames')
+        print(f'Frames extracted: {len(frames)}')
+
+uploader.observe(on_upload_change, names='value')
+
+# Create a button to download frames
+download_button = widgets.Button(description='Download Frames')
+
+def download_frames(_):
+    !zip -r -q /content/frames.zip /content/frames
+    print('Frames zipped. Downloading...')
+    from google.colab import files
+    files.download('/content/frames.zip')
+
+download_button.on_click(download_frames)
+display(download_button)
